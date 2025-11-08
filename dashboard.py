@@ -60,17 +60,13 @@ def show_segmented_view(full_df):
     view = st.radio("📂 View Mode", ["All", "Buyer", "Seller"], horizontal=True)
 
     if view == "Buyer":
-        buyers = full_df["Buyer"].dropna().unique()
-        selected = st.selectbox("Select Buyer", buyers)
-        df = full_df[full_df["Buyer"] == selected]
+        df = full_df[full_df["Buyer"].notna()]
     elif view == "Seller":
-        sellers = full_df["Seller"].dropna().unique()
-        selected = st.selectbox("Select Seller", sellers)
-        df = full_df[full_df["Seller"] == selected]
+        df = full_df[full_df["Seller"].notna()]
     else:
         df = full_df
 
-    filtered_df = apply_filters(df, full_df)  # ✅ Pass both df and full_df
+    filtered_df = apply_filters(df, full_df)
     st.markdown(f"### 📋 Showing: {view} View")
     st.dataframe(filtered_df, use_container_width=True)
     export_buttons(filtered_df)
@@ -124,6 +120,7 @@ if uploaded_file:
         show_segmented_view(full_df)  # Pass full_df into your view function
 else:
     st.info("📎 Please upload an Excel file to begin.")
+
 
 
 
