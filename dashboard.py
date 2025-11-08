@@ -19,12 +19,24 @@ else:
 SHEET_NAME = "DATA"
 
 def load_data():
-    wb = load_workbook(EXCEL_PATH, read_only=True, keep_vba=True)
-    ws = wb[SHEET_NAME]
-    headers = [cell.value for cell in ws[1]]
-    data = [[cell.value for cell in row] for row in ws.iter_rows(min_row=2)]
-    wb.close()
-    return pd.DataFrame(data, columns=headers)
+from openpyxl import load_workbook
+import pandas as pd
+
+def load_data(uploaded_file):
+    wb = load_workbook(uploaded_file, read_only=True, keep_vba=True)
+    
+    if "DATA" not in wb.sheetnames:
+        st.error("❌ Sheet named 'DATA' not found in the uploaded file.")
+        return pd.DataFrame()  # Return empty DataFrame to avoid crash
+
+    sheet = wb["DATA"]
+    data = list(sheet.values)
+
+    # Optional: convert to DataFrame with headers
+    headers = data[0]
+    rows = data[1:]
+    df = pd.DataFrame(rows, columns=headers)
+    return df
 
 def advanced_filter(df, column, filter_text):
     if not filter_text:
@@ -116,3 +128,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
