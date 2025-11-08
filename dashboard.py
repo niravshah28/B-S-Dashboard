@@ -54,20 +54,41 @@ def export_buttons(df):
         )
 
 # Advanced filters
-def apply_filters(df):
+
+# Segmented views
+def show_segmented_view(full_df):
+    view = st.radio("📂 View Mode", ["All", "Buyer", "Seller"], horizontal=True)
+
+    if view == "Buyer":
+        buyers = full_df["Buyer"].dropna().unique()
+        selected = st.selectbox("Select Buyer", buyers)
+        df = full_df[full_df["Buyer"] == selected]
+    elif view == "Seller":
+        sellers = full_df["Seller"].dropna().unique()
+        selected = st.selectbox("Select Seller", sellers)
+        df = full_df[full_df["Seller"] == selected]
+    else:
+        df = full_df
+
+    filtered_df = apply_filters(df, full_df)  # ✅ Pass both df and full_df
+    st.markdown(f"### 📋 Showing: {view} View")
+    st.dataframe(filtered_df, use_container_width=True)
+    export_buttons(filtered_df)
+    
+def apply_filters(df, full_df):
     st.markdown("### 🔍 Advanced Filters")
 
     col1, col2 = st.columns(2)
     with col1:
-        shape = st.multiselect("Shape", df["Shape"].dropna().unique())
-        color = st.multiselect("Color", df["Color"].dropna().unique())
-        quality = st.multiselect("Quality", df["Quality"].dropna().unique())
-        seller = st.multiselect("Seller", df["Seller"].dropna().unique())
+        shape = st.multiselect("Shape", full_df["Shape"].dropna().unique())
+        color = st.multiselect("Color", full_df["Color"].dropna().unique())
+        quality = st.multiselect("Quality", full_df["Quality"].dropna().unique())
+        seller = st.multiselect("Seller", full_df["Seller"].dropna().unique())
     with col2:
-        buyer = st.multiselect("Buyer", df["Buyer"].dropna().unique())
-        pointer = st.multiselect("Pointer", df["Pointer"].dropna().unique())
-        size = st.multiselect("Size (mm)", df["Size (mm)"].dropna().unique())
-        date = st.multiselect("Date", df["Date"].dropna().unique())
+        buyer = st.multiselect("Buyer", full_df["Buyer"].dropna().unique())
+        pointer = st.multiselect("Pointer", full_df["Pointer"].dropna().unique())
+        size = st.multiselect("Size (mm)", full_df["Size (mm)"].dropna().unique())
+        date = st.multiselect("Date", full_df["Date"].dropna().unique())
 
     logic = st.radio("Filter Logic", ["AND", "OR"], horizontal=True)
 
@@ -86,7 +107,7 @@ def apply_filters(df):
         for col, values in filters.items():
             if values:
                 df = df[df[col].isin(values)]
-    else:  # OR logic
+    else:
         mask = pd.Series([False] * len(df))
         for col, values in filters.items():
             if values:
@@ -94,29 +115,13 @@ def apply_filters(df):
         df = df[mask]
 
     return df
-
-# Segmented views
-def show_segmented_view(df):
-    view = st.radio("📂 View Mode", ["All", "Buyer", "Seller"], horizontal=True)
-    if view == "Buyer":
-        buyers = df["Buyer"].dropna().unique()
-        selected = st.selectbox("Select Buyer", buyers)
-        df = df[df["Buyer"] == selected]
-    elif view == "Seller":
-        sellers = df["Seller"].dropna().unique()
-        selected = st.selectbox("Select Seller", sellers)
-        df = df[df["Seller"] == selected]
-
-    filtered_df = apply_filters(df)
-    st.markdown(f"### 📋 Showing: {view} View")
-    st.dataframe(filtered_df, use_container_width=True)
-    export_buttons(filtered_df)
-
+# Main logic
 # Main logic
 if uploaded_file:
-    df = load_data(uploaded_file)
-    if not df.empty:
-        show_segmented_view(df)
+    full_df = load_data(uploaded_file)  # ✅ Add this line here
+
+    if not full_df.empty:
+        show_segmented_view(full_df)  # Pass full_df into your view function
 else:
     st.info("📎 Please upload an Excel file to begin.")
 
