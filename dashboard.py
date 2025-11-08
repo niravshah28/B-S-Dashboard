@@ -28,15 +28,30 @@ def load_data(uploaded_file):
 
 # Export buttons
 def export_buttons(df):
+    st.markdown("### 📤 Export Options")
+
+    default_name = "buyer_seller"
+    file_name = st.text_input("📝 Enter export file name (without extension)", value=default_name)
+
     col1, col2 = st.columns(2)
     with col1:
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Export CSV", data=csv, file_name="buyer_seller.csv", mime="text/csv")
+        st.download_button(
+            label="📥 Export CSV",
+            data=csv,
+            file_name=f"{file_name}.csv",
+            mime="text/csv"
+        )
     with col2:
         excel_buffer = BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='DATA')
-        st.download_button("📥 Export Excel", data=excel_buffer.getvalue(), file_name="buyer_seller.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button(
+            label="📥 Export Excel",
+            data=excel_buffer.getvalue(),
+            file_name=f"{file_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 # Advanced filters
 def apply_filters(df):
@@ -104,5 +119,6 @@ if uploaded_file:
         show_segmented_view(df)
 else:
     st.info("📎 Please upload an Excel file to begin.")
+
 
 
