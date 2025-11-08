@@ -65,7 +65,11 @@ def show_segmented_view(full_df):
     else:
         df = full_df
 
-    filtered_df = apply_filters(df, full_df)
+    # Remove 'Profit' column if it exists
+    if "Profit" in df.columns:
+        df = df.drop(columns=["Profit"])
+
+    filtered_df = apply_filters(df, full_df.drop(columns=["Profit"]) if "Profit" in full_df.columns else full_df)
     st.markdown(f"### 📋 Showing: {view} View")
     st.dataframe(filtered_df, use_container_width=True)
     export_buttons(filtered_df)
@@ -119,6 +123,7 @@ if uploaded_file:
         show_segmented_view(full_df)  # Pass full_df into your view function
 else:
     st.info("📎 Please upload an Excel file to begin.")
+
 
 
 
