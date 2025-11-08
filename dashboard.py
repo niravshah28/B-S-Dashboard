@@ -30,8 +30,8 @@ def load_data(uploaded_file):
 def export_buttons(df):
     st.markdown("### 📤 Export Options")
 
-    default_name = "buyer_seller"
-    file_name = st.text_input("📝 Enter export file name (without extension)", value=default_name)
+    # Move file name input outside columns for mobile compatibility
+    file_name = st.text_input("📝 Enter export file name (without extension)", value="buyer_seller")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -52,7 +52,6 @@ def export_buttons(df):
             file_name=f"{file_name}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
 # Advanced filters
 
 # Segmented views
@@ -120,6 +119,7 @@ if uploaded_file:
         show_segmented_view(full_df)  # Pass full_df into your view function
 else:
     st.info("📎 Please upload an Excel file to begin.")
+
 
 
 
