@@ -2,7 +2,20 @@ import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
 
-EXCEL_PATH = "data.xlsm"
+import streamlit as st
+import pandas as pd
+
+st.title("📊 Buyer-Seller Dashboard")
+
+uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xls", "xlsx", "xlsm"])
+if uploaded_file:
+    df = pd.read_excel(uploaded_file)
+    st.success("File uploaded successfully!")
+    
+    # Use df in your dashboard logic
+    st.dataframe(df)  # Replace with your custom views
+else:
+    st.warning("Please upload an Excel file to proceed.")
 SHEET_NAME = "DATA"
 
 def load_data():
@@ -101,4 +114,5 @@ def main():
             st.error("Please enter a filename.")
 
 if __name__ == "__main__":
+
     main()
