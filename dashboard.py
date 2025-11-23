@@ -2,17 +2,16 @@ import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
 from io import BytesIO
+import datetime
 
 st.set_page_config(page_title="Buyer-Seller Dashboard", layout="wide")
 st.title("📊 Buyer-Seller Dashboard")
 
-# Upload Excel file
 uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xls", "xlsx", "xlsm"])
 
-# Load only the 'DATA' sheet
 def load_data(uploaded_file):
     try:
-        wb = load_workbook(uploaded_file, read_only=True, keep_vba=True)
+        wb = load_workbook(uploaded_file, data_only=True, keep_vba=True)
         if "DATA" not in wb.sheetnames:
             st.error("❌ Sheet named 'DATA' not found.")
             return pd.DataFrame()
@@ -21,59 +20,55 @@ def load_data(uploaded_file):
         headers = data[0]
         rows = data[1:]
         df = pd.DataFrame(rows, columns=headers)
+
+        if "Date" in df.columns:
+            date_series = pd.to_datetime(df["Date"], errors="coerce")
+            df["Date"] = date_series.dt.strftime("%d-%m-%Y").fillna("")
+
         return df
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
         return pd.DataFrame()
 
-# Export buttons
 def export_buttons(df):
     st.markdown("### 📤 Export Options")
-
-    # Move file name input outside columns for mobile compatibility
     file_name = st.text_input("📝 Enter export file name (without extension)", value="buyer_seller")
 
     col1, col2 = st.columns(2)
     with col1:
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Export CSV",
-            data=csv,
-            file_name=f"{file_name}.csv",
-            mime="text/csv"
-        )
+        st.download_button("📥 Export CSV", csv, f"{file_name}.csv", "text/csv")
     with col2:
         excel_buffer = BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='DATA')
-        st.download_button(
-            label="📥 Export Excel",
-            data=excel_buffer.getvalue(),
-            file_name=f"{file_name}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-# Advanced filters
+        st.download_button("📥 Export Excel", excel_buffer.getvalue(), f"{file_name}.xlsx",
+                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# Segmented views
 def show_segmented_view(full_df):
     view = st.radio("📂 View Mode", ["All", "Buyer", "Seller"], horizontal=True)
 
     if view == "Buyer":
-        df = full_df[full_df["Buyer"].notna()]
+        df = full_df[full_df["Buyer"].notna()].copy()
     elif view == "Seller":
-        df = full_df[full_df["Seller"].notna()]
+        df = full_df[full_df["Seller"].notna()].copy()
+        df = df.iloc[:, :14]
     else:
-        df = full_df
+        df = full_df.copy()
 
-    # Remove 'Profit' column if it exists
     if "Profit" in df.columns:
         df = df.drop(columns=["Profit"])
 
-    filtered_df = apply_filters(df, full_df.drop(columns=["Profit"]) if "Profit" in full_df.columns else full_df)
+    filtered_df = apply_filters(df, full_df)
+
+    if view == "Buyer":
+        drop_cols = ["Price", "Terms", "Days Seller", "Amt", "Seller", "Broker"]
+        filtered_df = filtered_df.drop(columns=[col for col in drop_cols if col in filtered_df.columns])
+
     st.markdown(f"### 📋 Showing: {view} View")
     st.dataframe(filtered_df, use_container_width=True)
     export_buttons(filtered_df)
-    
+
 def apply_filters(df, full_df):
     st.markdown("### 🔍 Advanced Filters")
 
@@ -87,7 +82,16 @@ def apply_filters(df, full_df):
         buyer = st.multiselect("Buyer", full_df["Buyer"].dropna().unique())
         pointer = st.multiselect("Pointer", full_df["Pointer"].dropna().unique())
         size = st.multiselect("Size (mm)", full_df["Size (mm)"].dropna().unique())
-        date = st.multiselect("Date", full_df["Date"].dropna().unique())
+
+        # Date range filter
+        ignore_date = st.checkbox("Ignore date filter (show all dates)", value=True)
+        today = datetime.date.today()
+        default_start = today.replace(day=1)
+        default_end = today
+        date_range = st.date_input("📅 Date Range", value=(default_start, default_end), disabled=ignore_date)
+
+        if not ignore_date and all(date_range):
+            st.caption(f"🗓 Selected range: {date_range[0].strftime('%d-%m-%Y')} to {date_range[1].strftime('%d-%m-%Y')}")
 
     logic = st.radio("Filter Logic", ["AND", "OR"], horizontal=True)
 
@@ -98,34 +102,34 @@ def apply_filters(df, full_df):
         "Seller": seller,
         "Buyer": buyer,
         "Pointer": pointer,
-        "Size (mm)": size,
-        "Date": date
+        "Size (mm)": size
     }
+
+    df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y", errors="coerce")
 
     if logic == "AND":
         for col, values in filters.items():
             if values:
                 df = df[df[col].isin(values)]
+        if not ignore_date and all(date_range):
+            start_date, end_date = date_range
+            df = df[(df["Date"] >= pd.to_datetime(start_date)) & (df["Date"] <= pd.to_datetime(end_date))]
     else:
-        mask = pd.Series([False] * len(df))
+        mask = pd.Series(False, index=df.index)
         for col, values in filters.items():
             if values:
                 mask |= df[col].isin(values)
+        if not ignore_date and all(date_range):
+            mask |= (df["Date"] >= pd.to_datetime(date_range[0])) & (df["Date"] <= pd.to_datetime(date_range[1]))
         df = df[mask]
 
+    df["Date"] = df["Date"].dt.strftime("%d-%m-%Y").fillna("")
     return df
-# Main logic
-# Main logic
-if uploaded_file:
-    full_df = load_data(uploaded_file)  # ✅ Add this line here
 
+if uploaded_file:
+    full_df = load_data(uploaded_file)
     if not full_df.empty:
-        show_segmented_view(full_df)  # Pass full_df into your view function
+        show_segmented_view(full_df)
 else:
     st.info("📎 Please upload an Excel file to begin.")
-
-
-
-
-
-
+    
